@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<body>
+<h3 id="description"></h3>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+
+var width = 960,
+    height = 500;
+var n0=2;
+
+var nodes = d3.range(n0).map(function(i) { return {radius: Math.random()*6+6, class:0}; }),
+    root = nodes[0],
+    color = [
+        "#0365C0",  // 0 aRG
+        "#00882B",  // 1 N
+        "#FFDC28",  // 2 IP
+        "#C82506",  // 3 bRGa
+        "#C86006",  // 4 bRGb
+        "#91FF28",  // 5 TAPa
+        "#AFF500",  // 6 TAPb
+        "#CDEB00"   // 7 TAPc
+    ];
+
+root.radius = 0;
+root.fixed = true;
+
+// Lineage description
+var lineage = 6;
+switch(lineage) {
+    case 1: d3.select("#description").text("Lineage 1: an apical proliferator divides into an apical proliferator and a neurones"); break;
+    case 2: d3.select("#description").text("Lineage 2: an apical proliferator divides into an apical proliferator and an intermediate progenitor, which then divides into 2 neurones"); break;
+    case 3: d3.select("#description").text("Lineage 3: an apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into a basal proliferator and a neurone"); break;
+    case 4: d3.select("#description").text("Lineage 4: an apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into a basal proliferator and a transient progenitor, which divides into 2 transient progenitors, which each divide into 2 neurones"); break;
+    case 5: d3.select("#description").text("Lineage 5: an apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into 2 basal proliferators, only one of which then divides into a self-renewing basal progenitor and a transient progenitor. This transient progenitor divides into 2 transient progenitors, each of which divide into 2 neurones"); break;
+    case 6: d3.select("#description").text("Lineage 6: an apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into a basal proliferator and a transient progenitor. This transient progenitor divides into 2 transient progenitors, each of which divide again into 2 transient progenitors, and then into 2 neurones each"); break;
+}
+
+var force = d3.layout.force()
+    .gravity(0.05)
+    .friction(0.1)
+    .charge(function(d, i) { return i ? 0 : -2000; })
+    .nodes(nodes)
+    .size([width, height]);
+
+force.start();
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+svg.selectAll("circle")
+    .data(nodes.slice(1))
+  .enter().append("circle")
+    .on("mousedown", division)
+    .attr("r", function(d) { return d.radius-1; })
+    .style("fill", function(d) { return color[d.class]; });
+
+/*
+// Add class number as text label
+var text = svg.selectAll("text")
+                        .data(nodes.slice(1))
+                        .enter()
+                        .append("text");
+var textLabels = text
+                 .attr("x", function(d) { return d.x; })
+                 .attr("y", function(d) { return d.y; })
+                 .text( function (d) { return d.class; })
+                 .attr("font-family", "sans-serif")
+                 .attr("font-size", "14px")
+                 .attr("fill", "black");
+*/
+
+
+force.on("tick", function(e) {
+  var q = d3.geom.quadtree(nodes),
+      i = 0,
+      n = nodes.length;
+
+  while (++i < n) q.visit(collide(nodes[i]));
+
+  svg.selectAll("circle")
+      .attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; });
+
+/*
+// Update class number as text label
+  svg.selectAll("text")
+      .attr("x", function(d) { return d.x; })
+      .attr("y", function(d) { return d.y; });
+*/
+});
+
+// Trigger a cell division as soon as the force simulation has converged
+force.on("end", function (e) {
+    var i,n=nodes.length;
+    for(i=1;i<n;i++) {
+        division(nodes[i]);
+    }
+    update();
+});
+
+/*
+// Trigger a cell division at regular intervals
+setInterval(function() {
+    var i,n=nodes.length;
+    for(i=1;i<n;i++) {
+        division(nodes[i]);
+    }
+    update();
+},10000);
+*/
+
+function update() {
+    var node=svg.selectAll("circle").data(nodes.slice(1));
+    node
+     .enter()
+     .append("circle")
+     .on("mousedown", division)
+     .attr("r", function(d){return d.radius-1})
+     .attr("cx", function(d){return d.x})
+     .attr("cy", function(d){return d.y})
+     .append("text")
+     .text("hola");
+
+    node
+     .style('fill',function(d){return color[d.class];});
+
+    force.start()
+}
+
+// Add mouse repulsion
+svg.on("mousemove", function() {
+  var p1 = d3.mouse(this);
+  root.px = p1[0];
+  root.py = p1[1];
+  force.resume();
+});
+
+// Collision force
+function collide(node) {
+  var r = node.radius + 16,
+      nx1 = node.x - r,
+      nx2 = node.x + r,
+      ny1 = node.y - r,
+      ny2 = node.y + r;
+  return function(quad, x1, y1, x2, y2) {
+    if (quad.point && (quad.point !== node)) {
+      var x = node.x - quad.point.x,
+          y = node.y - quad.point.y,
+          l = Math.sqrt(x * x + y * y),
+          r = node.radius + quad.point.radius;
+      if (l < r) {
+        l = (l - r) / l * .5;
+        node.x -= x *= l;
+        node.y -= y *= l;
+        quad.point.x += x;
+        quad.point.y += y;
+      }
+    }
+    return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+  };
+}
+
+// Cell division following different lineages
+function division(e) {
+    var x,y,r,c;
+    var ind;
+    
+    ind=e.index;
+    
+    r = Math.random()*6+6;
+    x = nodes[ind].x;
+    y = nodes[ind].y;
+    c = nodes[ind].class;
+    
+    switch(lineage) {
+        // Lineage 1
+        case 1:
+            switch(c) {
+                case 0: c=1;                       break; // aRG
+                case 1: return;                    break; // Neurone
+            }
+            break;
+        // Lineage 2
+        case 2:
+            switch(c) {
+                case 0: c=2;                       break; // aRG
+                case 1: return;                    break; // Neurone
+                case 2: nodes[ind].class = 1; c=1; break; // IP
+            }
+            break;
+        case 3:
+            // Lineage 3
+            switch(c) {
+                case 0: c=3;                       break; // aRG
+                case 1: return;                    break; // Neurone
+                case 3: c=1;                       break; // bRG
+            }
+            break;
+        case 4:
+            // Lineage 4
+            switch(c) {
+                case 0: c=3;                       break; // aRG -> aRG + bRG
+                case 1: return;                    break; // N
+                case 3: c=5;                       break; // bRG -> bRG + TAPa
+                case 5: nodes[ind].class = 6; c=6; break; // TAPa -> TAPb + TAPb
+                case 6: nodes[ind].class=1;c=1;    break; // TAPb -> N + N
+            }
+            break;
+        case 5:
+            // Lineage 5
+            switch(c) {
+                case 0: c=4;                       break; // aRG -> aRG + bRGb
+                case 1: return;                    break; // N
+                case 3: c=5;                       break; // bRG -> bRG + TAPa
+                case 4: c=3;                       break; // bRGb -> bRGb + bRG
+                case 5: nodes[ind].class = 6; c=6; break; // TAPa -> TAPb + TAPb
+                case 6: nodes[ind].class=1;c=1;    break; // TAPb -> N + N
+            }
+            break;
+        case 6:
+            // Lineage 6
+            switch(c) {
+                case 0: c=3;                       break; // aRG -> aRG + bRG
+                case 1: return;                    break; // N
+                case 3: c=7;                       break; // bRG -> bRG + TAPc
+                case 5: nodes[ind].class=6;c=6;    break; // TAPa -> TAPb + TAPb
+                case 6: nodes[ind].class=1;c=1;    break; // TAPb -> N + N
+                case 7: nodes[ind].class=5;c=5;    break; // TAPc -> TAPa + TAPa
+            }
+            break;
+    }
+    
+    nodes.push({radius:r,x:x+r/2,y:y,class:c});
+}
+</script>
