@@ -1,15 +1,45 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <body>
-<h3 id="description"></h3>
+<style>
+* {
+    font-family: sans-serif;
+    color: #555;
+    line-height:1.5;
+}
+body {
+    background-color: #777;
+}
+h3 {
+    color: #222;
+}
+#content {
+    background-color:#fff;
+    padding:2rem;
+    width:960px;
+}
+
+</style>
+
+<div id="content">
+    <p id="description">
+    </p>
+    <svg id="svg">
+    </svg>
+</div>
+
 <script src="https://d3js.org/d3.v3.min.js"></script>
 <script>
 
 var width = 960,
     height = 500;
-var n0=2;
+var n0=2, idiv=0,maxdiv=10;
+var g_drawLabels=false;
 
-var nodes = d3.range(n0).map(function(i) { return {radius: Math.random()*6+6, class:0}; }),
+var nodes = d3.range(n0).map(function(i) { return { 
+    radius: Math.random()*6+6,
+    class:0
+};}),
     root = nodes[0],
     color = [
         "#0365C0",  // 0 aRG
@@ -26,14 +56,14 @@ root.radius = 0;
 root.fixed = true;
 
 // Lineage description
-var lineage = 6;
+var lineage = 1;
 switch(lineage) {
-    case 1: d3.select("#description").text("Lineage 1: an apical proliferator divides into an apical proliferator and a neurones"); break;
-    case 2: d3.select("#description").text("Lineage 2: an apical proliferator divides into an apical proliferator and an intermediate progenitor, which then divides into 2 neurones"); break;
-    case 3: d3.select("#description").text("Lineage 3: an apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into a basal proliferator and a neurone"); break;
-    case 4: d3.select("#description").text("Lineage 4: an apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into a basal proliferator and a transient progenitor, which divides into 2 transient progenitors, which each divide into 2 neurones"); break;
-    case 5: d3.select("#description").text("Lineage 5: an apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into 2 basal proliferators, only one of which then divides into a self-renewing basal progenitor and a transient progenitor. This transient progenitor divides into 2 transient progenitors, each of which divide into 2 neurones"); break;
-    case 6: d3.select("#description").text("Lineage 6: an apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into a basal proliferator and a transient progenitor. This transient progenitor divides into 2 transient progenitors, each of which divide again into 2 transient progenitors, and then into 2 neurones each"); break;
+    case 1: d3.select("#description").html("<h3>Lineage 1.</h3> An apical proliferator divides into an apical proliferator and a neurone"); break;
+    case 2: d3.select("#description").html("<h3>Lineage 2.</h3> An apical proliferator divides into an apical proliferator and an intermediate progenitor, which then divides into 2 neurones"); break;
+    case 3: d3.select("#description").html("<h3>Lineage 3.</h3> An apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into a basal proliferator and a neurone"); break;
+    case 4: d3.select("#description").html("<h3>Lineage 4.</h3> An apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into a basal proliferator and a transient progenitor, which divides into 2 transient progenitors, which each divide into 2 neurones"); break;
+    case 5: d3.select("#description").html("<h3>Lineage 5.</h3> An apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into 2 basal proliferators, only one of which then divides into a self-renewing basal progenitor and a transient progenitor. This transient progenitor divides into 2 transient progenitors, each of which divide into 2 neurones"); break;
+    case 6: d3.select("#description").html("<h3>Lineage 6.</h3> An apical proliferator divides into an apical proliferator and a basal proliferator, the basal proliferator divides into a basal proliferator and a transient progenitor. This transient progenitor divides into 2 transient progenitors, each of which divide again into 2 transient progenitors, and then into 2 neurones each"); break;
 }
 
 var force = d3.layout.force()
@@ -45,7 +75,7 @@ var force = d3.layout.force()
 
 force.start();
 
-var svg = d3.select("body").append("svg")
+var svg = d3.select("#svg")
     .attr("width", width)
     .attr("height", height);
 
@@ -56,20 +86,20 @@ svg.selectAll("circle")
     .attr("r", function(d) { return d.radius-1; })
     .style("fill", function(d) { return color[d.class]; });
 
-/*
-// Add class number as text label
-var text = svg.selectAll("text")
-                        .data(nodes.slice(1))
-                        .enter()
-                        .append("text");
-var textLabels = text
-                 .attr("x", function(d) { return d.x; })
-                 .attr("y", function(d) { return d.y; })
-                 .text( function (d) { return d.class; })
-                 .attr("font-family", "sans-serif")
-                 .attr("font-size", "14px")
-                 .attr("fill", "black");
-*/
+if(g_drawLabels) {
+    // Add class number as text label
+    var text = svg.selectAll("text")
+                            .data(nodes.slice(1))
+                            .enter()
+                            .append("text");
+    var textLabels = text
+                     .attr("x", function(d) { return d.x; })
+                     .attr("y", function(d) { return d.y; })
+                     .text( function (d) { return d.class; })
+                     .attr("font-family", "sans-serif")
+                     .attr("font-size", "14px")
+                     .attr("fill", "black");
+}
 
 
 force.on("tick", function(e) {
@@ -83,21 +113,34 @@ force.on("tick", function(e) {
       .attr("cx", function(d) { return d.x; })
       .attr("cy", function(d) { return d.y; });
 
-/*
-// Update class number as text label
-  svg.selectAll("text")
-      .attr("x", function(d) { return d.x; })
-      .attr("y", function(d) { return d.y; });
-*/
+    if(g_drawLabels) {
+    // Update class number as text label
+      svg.selectAll("text")
+          .attr("x", function(d) { return d.x; })
+          .attr("y", function(d) { return d.y; });
+    }
 });
 
 // Trigger a cell division as soon as the force simulation has converged
 force.on("end", function (e) {
+    if(++idiv>maxdiv)
+        return;
+
     var i,n=nodes.length;
     for(i=1;i<n;i++) {
         division(nodes[i]);
     }
     update();
+    
+    // count cells in each class
+    var c=[];
+    for(i=1;i<nodes.length;i++) {
+        if(c[nodes[i].class])
+            c[nodes[i].class]++;
+        else
+            c[nodes[i].class]=1;
+    }
+    console.log(c);
 });
 
 /*
